@@ -10,7 +10,7 @@ const { getUserPrefix, updateUserPrefix } = require('../database/userPrefix'); /
 
 const { handleStatusCommand } = require('./statusView'); // Import the status command handler
 
-const handleGeneralCommand = async (sock, message, command, args, userId, remoteJid, botInstance, realSender, botOwnerIds, normalizedUserId, botLid) => {
+const handleGeneralCommand = async (sock, message, command, args, userId, remoteJid, botInstance, realSender, botOwnerIds, normalizedUserId, botLid, authId) => {
     try {
                    // Restrict all commands to the bot owner
             if (realSender !== normalizedUserId && realSender !== botLid) {
@@ -112,7 +112,7 @@ case 'ping':
                         });
             
                         // Restart the bot
-                        const restartSuccess = await restartUserBot(userId, remoteJid);
+                        const restartSuccess = await restartUserBot(userId, remoteJid, authId);
                         if (restartSuccess) {
                             console.log(`✅ Bot restarted successfully for user: ${userId}`);
                         } else {

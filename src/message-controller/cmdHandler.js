@@ -120,7 +120,7 @@ const handleCommand = async (sock, message, userId, authId, messageContent) => {
                 case 'status':
                 case 'view':
                     console.log(`📜 Routing "${command}" to generalCommand.js...`);
-                    const generalHandled = await handleGeneralCommand(sock, message, command, args, userId, remoteJid, botInstance, realSender, botOwnerIds, normalizedUserId, botLid);
+                    const generalHandled = await handleGeneralCommand(sock, message, command, args, userId, remoteJid, botInstance, realSender, botOwnerIds, normalizedUserId, botLid, authId);
                     if (generalHandled) {
                         return; // Exit if the command was handled
                     } else {

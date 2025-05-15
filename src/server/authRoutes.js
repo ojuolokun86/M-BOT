@@ -141,7 +141,7 @@ router.post('/restart-bot/:phoneNumber', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Bot not found for this user.' });
         }
 
-        await restartUserBot(phoneNumber, authId); // Restart the bot
+         await restartUserBot(phoneNumber, null, authId); // Call the restartBot function
         console.log(`✅ Bot restarted for phoneNumber: ${phoneNumber}`);
         res.status(200).json({ success: true, message: `Bot restarted successfully for ${phoneNumber}.` });
     } catch (error) {
