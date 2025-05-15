@@ -81,11 +81,11 @@ async function useHybridAuthState(phoneNumber, authId) {
                     }
                 }
 
-                // ✅ Ensure creds are valid
-                if (!sessionData.creds || !sessionData.creds.me || !sessionData.creds.me.id) {
-                    console.warn(`⚠️ Missing or invalid creds for ${phoneNumber}. Reinitializing...`);
-                     sessionData.creds = initAuthCreds(); // reinitialize
-                }
+                // // ✅ Ensure creds are valid
+                // if (!sessionData.creds || !sessionData.creds.me || !sessionData.creds.me.id) {
+                //     console.warn(`⚠️ Missing or invalid creds for ${phoneNumber}. Reinitializing...`);
+                //      sessionData.creds = initAuthCreds(); // reinitialize
+                // }
 
                 memory.saveSessionToMemory(phoneNumber, sessionData, authId); // Save to memory
             },

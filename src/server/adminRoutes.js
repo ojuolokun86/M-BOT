@@ -82,9 +82,10 @@ router.delete('/users', async (req, res) => {
 
 router.post('/restart-bot/:phoneNumber', async (req, res) => {
     const { phoneNumber } = req.params;
+    const { authId } = req.body; // Get authId from body
     try {
-        await restartUserBot(phoneNumber); // Call the restartBot function
-        console.log(`Restarting bot for user: ${phoneNumber}`);
+        await restartUserBot(phoneNumber, authId); // Call the restartBot function
+        console.log(`Restarting bot for user: ${phoneNumber}, authId: ${authId}`);
         res.json({ success: true, message: `Bot for ${phoneNumber} restarted successfully` });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Failed to restart bot', error: error.message });

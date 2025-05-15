@@ -44,7 +44,7 @@ const saveUserInfo = async (sock, phoneNumber, authId) => {
         console.error(`❌ Failed to save user info for phone number ${userId}:`, error);
     }
 };
-
+const qrTimeouts = {};
 const startNewSession = async (phoneNumber, io, authId) => {
  if (!phoneNumber || !authId) {
         console.error('❌ Cannot start session: phoneNumber or authId is undefined.');
@@ -99,11 +99,40 @@ const startNewSession = async (phoneNumber, io, authId) => {
                 }
             });
         }
+
+         if (qrTimeouts[phoneNumber]) {
+                    clearTimeout(qrTimeouts[phoneNumber]);
+                }
+                // Set a new timeout: 5 minutes (300000 ms)
+                qrTimeouts[phoneNumber] = setTimeout(async () => {
+                    console.log(`⏰ QR code for ${phoneNumber} not scanned in 5 minutes. Closing session.`);
+                    try {
+                        await sock.ws.close();
+                    } catch (err) {
+                        console.error(`❌ Error closing socket for ${phoneNumber}:`, err.message);
+                    }
+                    delete botInstances[phoneNumber];
+                    await deleteUserData(phoneNumber);
+                    if (io && authId) {
+                        io.to(String(authId)).emit('bot-error', {
+                            phoneNumber,
+                            status: 'failure',
+                            message: '❌ QR code expired. Please try registering your bot again.',
+                            needsRescan: true
+                        });
+                    }
+                }, 5 * 60 * 1000); // 5 minutes
+        
     
         const userId = phoneNumber;
         console.log(`🥶 user id ${userId}`)
 
             if (connection === 'open') {
+                 if (qrTimeouts[phoneNumber]) {
+                    clearTimeout(qrTimeouts[phoneNumber]);
+                    delete qrTimeouts[phoneNumber];
+                }
+            
                 console.log(`✅ Connected to WhatsApp for user ${userId}.`);
                 botInstances[userId] = { sock, authId}; // Save the bot instance
                 initializeBot(sock, userId); // Initialize the bot
