@@ -21,10 +21,10 @@ const validateSessionData = (data) => {
 async function useHybridAuthState(phoneNumber, authId) {
     let sessionData = memory.getSessionFromMemory(phoneNumber);
 
-   if (!sessionData.creds || !sessionData.creds.me || !sessionData.creds.me.id) {
-    console.error(`❌ Invalid or incomplete credentials for ${phoneNumber}. Aborting session load.`);
-    throw new Error(`Invalid or incomplete credentials for ${phoneNumber}`);
-
+    if (!sessionData) {
+    console.log(`⚠️ Session for ${phoneNumber} not found in memory. Initializing new session.`);
+    sessionData = { creds: initAuthCreds(), keys: {} };
+    memory.saveSessionToMemory(phoneNumber, sessionData, authId);
 } else {
     try {
         // Validate credentials
