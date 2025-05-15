@@ -24,10 +24,11 @@ const createServer = () => {
 
     // Middleware
     app.use(cors({
-        origin: '*', // Allow all origins for REST API
-        methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'], // Allowed HTTP methods
-        credentials: true, // Allow cookies if needed
-    }));
+        origin: 'http://127.0.0.1:8080',  // Your frontend URL
+        methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+        credentials: true,
+    })); // Enable CORS for all routes
+
     app.use(bodyParser.json()); // Parse application/json
     app.use(bodyParser.urlencoded({ extended: true })); // Parse application/x-www-form-urlencoded
 

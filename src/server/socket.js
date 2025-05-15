@@ -11,10 +11,14 @@ const userSockets = new Map(); // Map to store authId and socket ID
 const initializeSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: '*', // Allow all origins (adjust as needed for security)
+            origin: 'http://127.0.0.1:8080', // or your frontend domain
             methods: ['GET', 'POST'],
+            credentials: true
         },
     });
+
+   
+
 
     io.on('connection', (socket) => {
         console.log(`🔗 New WebSocket connection: ${socket.id}`);
