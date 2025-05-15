@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs'); // For password hashing
 const supabase = require('../supabaseClient'); // Supabase client
 const router = express.Router();
 require('dotenv').config(); // Load environment variables
+const { botInstances } = require('../utils/globalStore')
 const { listSessionsFromMemory, getUserSessionsMemoryUsage } = require('../database/models/memory'); // Import memory functions
 const { deleteUserData } = require('../database/userDatabase'); // Import deleteUserData function
 const { restartUserBot } = require('../bot/restartBot'); // Import the restartBot function
