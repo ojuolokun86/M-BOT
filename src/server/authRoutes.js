@@ -202,6 +202,43 @@ router.post('/validate-token', async (req, res) => {
     }
 });
 
+router.post('/reset-password', async (req, res) => {
+    const { email, newPassword } = req.body;
 
+    if (!email || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Email and new password are required.' });
+    }
+
+    try {
+        // Check if user exists
+        const { data: user, error } = await supabase
+            .from('user_auth')
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        if (error || !user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        const { error: updateError } = await supabase
+            .from('user_auth')
+            .update({ password: hashedPassword })
+            .eq('email', email);
+
+        if (updateError) {
+            throw new Error(updateError.message);
+        }
+
+        res.status(200).json({ success: true, message: 'Password reset successful.' });
+    } catch (error) {
+        console.error('❌ Error resetting password:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to reset password.' });
+    }
+});
 
 module.exports = router;
