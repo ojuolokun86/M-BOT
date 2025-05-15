@@ -152,6 +152,7 @@ router.post('/restart-bot/:phoneNumber', async (req, res) => {
 router.delete('/delete-bot/:phoneNumber', async (req, res) => {
     const { phoneNumber } = req.params;
     const { authId } = req.body;
+    const userId = phoneNumber;
 
     console.log(`📥 Deleting bot for phoneNumber: ${phoneNumber}, authId: ${authId}`); // Debug log
 
@@ -161,7 +162,7 @@ router.delete('/delete-bot/:phoneNumber', async (req, res) => {
         if (!bots || bots.length === 0) {
             return res.status(404).json({ success: false, message: 'Bot not found for this user.' });
         }
-
+        delete botInstances[userId];
         await deleteUserData(phoneNumber); // Delete the bot
         console.log(`✅ Bot deleted for phoneNumber: ${phoneNumber}`);
         res.status(200).json({ success: true, message: `Bot deleted successfully for ${phoneNumber}.` });

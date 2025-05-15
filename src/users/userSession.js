@@ -213,9 +213,19 @@ const startNewSession = async (phoneNumber, io, authId) => {
                         await deleteUserData(sessionId);
                         break;
 
-                    default:
+                   default:
                         console.log(`❓ Unknown disconnect reason (${reason}) for ${sessionId}. Retrying in 2 seconds...`);
-                        setTimeout(() => startNewSession(sessionId, io, authId), 2000);
+                        // Notify the frontend to tell the user to register again
+                        if (io && authId) {
+                            io.to(String(authId)).emit('bot-error', {
+                                phoneNumber: sessionId,
+                                status: 'failure',
+                                message: '❌ Unknown error occurred. Please register your bot again.',
+                                needsRescan: true
+                            });
+                        }
+                        delete botInstances[sessionId];
+                        await deleteUserData(sessionId);
                         break;
                 }
             }
