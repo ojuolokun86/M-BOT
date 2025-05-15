@@ -1,4 +1,4 @@
-const { botInstances, restartQueue } = require('../utils/globalStore');
+const { botInstances, restartQueue, intentionalRestarts } = require('../utils/globalStore');
 const { updateUserMetrics } = require('../database/models/metrics');
 
 /**
@@ -18,18 +18,21 @@ const restartUserBot = async (userId, remoteJid, authId) => {
         // Add the remoteJid to the restart queue
         restartQueue[userId] = remoteJid;
 
+        // Mark this user for intentional restart to prevent reconnection during shutdown
+        intentionalRestarts.add(userId);
 
         // Close the user's WebSocket connection
         console.log(`❌ Closing connection for user: ${userId}`);
-       if (botInstance && botInstance.sock && botInstance.sock.ws) {
-            // Set the intentional disconnect flag
+        if (botInstance && botInstance.sock && botInstance.sock.ws) {
             botInstance.disconnectReason = 'intentional';
             await botInstance.sock.ws.close();
             delete botInstances[userId];
         }
+
+        // Start a new session
         const { startNewSession } = require('../users/userSession');
         console.log(`🔄 Starting a new session for user: ${userId}, authId: ${authId}`);
-        // await startNewSession(userId, null, authId);
+        await startNewSession(userId, null, authId);
 
         const endTime = Date.now();
         const timeTaken = endTime - startTime;

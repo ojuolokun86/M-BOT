@@ -1,5 +1,5 @@
 const { makeWASocket, DisconnectReason, initAuthCreds, BufferJSON, proto, useMultiFileAuthState, } = require('@whiskeysockets/baileys');
-const { botInstances, restartQueue } = require('../utils/globalStore'); // Import the global botInstances object
+const { botInstances, restartQueue, intentionalRestarts } = require('../utils/globalStore'); // Import the global botInstances object
 const initializeBot = require('../bot/bot'); // Import the bot initialization function
 const { addUser, deleteUserData } = require('../database/userDatabase'); // Import the addUser function
 const supabase = require('../supabaseClient');
@@ -50,15 +50,15 @@ const startNewSession = async (phoneNumber, io, authId) => {
         console.error('❌ Cannot start session: phoneNumber or authId is undefined.');
         return;
     }
+
+     if (intentionalRestarts.has(phoneNumber)) {
+        console.log(`⚠️ Skipping restart for user ${phoneNumber} due to intentional disconnection.`);
+        intentionalRestarts.delete(phoneNumber); // Clear the flag after skipping
+        return;
+    }
+
     try {
        console.log(`🔄 Starting a new session for auth_id: ${authId}, phone number: ${phoneNumber}`);
-
-        // Check if the disconnection was intentional
-        if (botInstances[phoneNumber]?.disconnectReason === 'intentional') {
-            console.log(`⚠️ Skipping restart for user ${phoneNumber} due to intentional disconnection.`);
-            delete botInstances[phoneNumber].disconnectReason; // Clear the flag
-            return;
-        }
       // Use Baileys' multiAuthState to manage session storage
       const { state, saveCreds } = await useHybridAuthState(phoneNumber, authId);
 

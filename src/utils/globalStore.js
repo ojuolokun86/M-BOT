@@ -12,6 +12,7 @@ const announcementIntervals = {}; // Store announcement intervals
 const restartQueue = {}; // Queue to store restart requests
 let globalPresenceType = null; // Changed from const to let
 const presenceSettings = {};
+const intentionalRestarts = new Set();
 
 
 // Cleanup logic for mediaStore
@@ -61,4 +62,5 @@ module.exports = {
     announcementIntervals,
     restartQueue,
     globalPresenceType,
+    intentionalRestarts,
 };

@@ -115,9 +115,6 @@ module.exports = async (sock, userId, version) => {
       // Add the message to the user's queue
       addToQueue(userId, async () => {
          const startTime = Date.now(); // Start timing the task
-
-    console.log(`📩 Processing message from user ${userId} with authId: ${authId} 
-        in chat ${remoteJid}:`, messageContent);
   // Log the activity
             if (!authId) {
                 console.error(`❌ authId is undefined for user ${userId}`);
