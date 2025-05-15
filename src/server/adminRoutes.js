@@ -434,6 +434,9 @@ const deleteExpiredBots = async () => {
     }
 };
 
+
+// Endpoint to fetch all bots/users with phoneNumber and authI
+
 // Schedule the task to run daily
 setInterval(deleteExpiredBots, 24 * 60 * 60 * 1000); // Every 24 hours
 
