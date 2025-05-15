@@ -9,7 +9,7 @@ const allowedOrigins = [
   "http://localhost:8080",
   "http://127.0.0.1:8080",
   "http://192.168.237.58:8080", // optional: your LAN IP, if needed
-  "https://your-frontend-domain.com" // your production frontend URL
+  "https://techitoonbmm.netlify.app" // your production frontend URL
 ];
 
 const getCorsOptions = () => ({
