@@ -1,64 +1,65 @@
 const { Server } = require('socket.io');
-const { getAllUserMetrics } = require('../database/models/metrics'); // Import the user metrics functions
+const { getAllUserMetrics } = require('../database/models/metrics');
 
-let io; // WebSocket server instance
-const userSockets = new Map(); // Map to store authId and socket ID
+let io;
+const userSockets = new Map();
 
-// corsConfig.js
+const allowedOrigins = [
+  'http://127.0.0.1:8080',  // local dev frontend
+  'https://your-frontend-domain.com', // production frontend
+];
+
 const getCorsOptions = () => ({
-  origin: 'http://127.0.0.1:8080',  // your frontend URL
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
   credentials: true,
 });
 
+const corsOptions = getCorsOptions();
 
-const corsOptions = getCorsOptions(); // Get CORS options   
-/**
- * Initialize the WebSocket server.
- * @param {Object} server - The HTTP server instance.
- */
 const initializeSocket = (server) => {
-    io = new Server(server, {
-        cors: corsOptions,
+  io = new Server(server, {
+    cors: corsOptions,
+  });
+
+  io.on('connection', (socket) => {
+    console.log(`🔗 New WebSocket connection: ${socket.id}`);
+
+    socket.on('authId', (authId) => {
+      console.log(`📥 Received authId: ${authId} for socket: ${socket.id}`);
+      userSockets.set(authId, socket.id);
+      socket.join(authId);
     });
 
-   
+    // Live metrics for admin (optional, if needed)
+    const metricsInterval = setInterval(() => {
+      const metrics = getAllUserMetrics();
+      socket.emit('metrics-update', metrics);
+    }, 5000);
 
-
-    io.on('connection', (socket) => {
-        console.log(`🔗 New WebSocket connection: ${socket.id}`);
-
-        // Listen for authId from the client
-        socket.on('authId', (authId) => {
-            console.log(`📥 Received authId: ${authId} for socket: ${socket.id}`);
-            userSockets.set(authId, socket.id); // Map authId to socket ID
-            socket.join(authId); // Join the user to a room with their authId
-        });
-
-        // Handle disconnection
-        socket.on('disconnect', () => {
-            console.log(`❌ WebSocket disconnected: ${socket.id}`);
-            userSockets.forEach((id, authId) => {
-                if (id === socket.id) {
-                    userSockets.delete(authId); // Remove the mapping on disconnect
-                }
-            });
-        });
+    socket.on('disconnect', () => {
+      console.log(`❌ WebSocket disconnected: ${socket.id}`);
+      for (const [authId, id] of userSockets.entries()) {
+        if (id === socket.id) userSockets.delete(authId);
+      }
+      clearInterval(metricsInterval);
     });
+  });
 
-    return io;
+  return io;
 };
 
-/**
- * Get the WebSocket server instance.
- * @returns {Object} The WebSocket server instance.
- */
 const getSocketInstance = () => {
-    if (!io) {
-        throw new Error('Socket.io instance has not been initialized. Call initializeSocket first.');
-    }
-    return io;
+  if (!io) {
+    throw new Error('Socket.io instance not initialized.');
+  }
+  return io;
 };
-
 
 module.exports = { initializeSocket, getSocketInstance, userSockets, getCorsOptions };
