@@ -4,17 +4,22 @@ const { getAllUserMetrics } = require('../database/models/metrics'); // Import t
 let io; // WebSocket server instance
 const userSockets = new Map(); // Map to store authId and socket ID
 
+// corsConfig.js
+const getCorsOptions = () => ({
+  origin: 'http://127.0.0.1:8080',  // your frontend URL
+  methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
+  credentials: true,
+});
+
+
+const corsOptions = getCorsOptions(); // Get CORS options   
 /**
  * Initialize the WebSocket server.
  * @param {Object} server - The HTTP server instance.
  */
 const initializeSocket = (server) => {
     io = new Server(server, {
-        cors: {
-            origin: 'http://127.0.0.1:8080', // or your frontend domain
-            methods: ['GET', 'POST'],
-            credentials: true
-        },
+        cors: corsOptions,
     });
 
    
@@ -56,4 +61,4 @@ const getSocketInstance = () => {
 };
 
 
-module.exports = { initializeSocket, getSocketInstance, userSockets, };
+module.exports = { initializeSocket, getSocketInstance, userSockets, getCorsOptions };

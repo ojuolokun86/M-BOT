@@ -13,6 +13,7 @@ const { getAllUserMetrics } = require('../database/models/metrics');
 const { initializeSocket, } = require('./socket'); // Import the WebSocket initializer
 const { router: userRoutes, } = require('./userRoutes'); // Import user routes and emitLiveMetrics
 const validateToken = require('../middlewares/validateToken'); // Import the validateToken middleware
+const { getCorsOptions } = require('./socket'); // Import the CORS options
 
 
 const createServer = () => {
@@ -21,13 +22,9 @@ const createServer = () => {
 
     // Initialize WebSocket server
     const io = initializeSocket(server);
-
+    const corsOptions = getCorsOptions();
     // Middleware
-    app.use(cors({
-        origin: 'http://127.0.0.1:8080',  // Your frontend URL
-        methods: ['GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'],
-        credentials: true,
-    })); // Enable CORS for all routes
+    app.use(cors(corsOptions));
 
     app.use(bodyParser.json()); // Parse application/json
     app.use(bodyParser.urlencoded({ extended: true })); // Parse application/x-www-form-urlencoded
