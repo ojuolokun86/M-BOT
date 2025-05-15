@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt'); // For password hashing
+const bcrypt = require('bcryptjs'); // For password hashing
 const supabase = require('../supabaseClient'); // Supabase client
 const router = express.Router();
 require('dotenv').config(); // Load environment variables
