@@ -110,6 +110,8 @@ router.post('/login', async (req, res) => {
             .eq('email', email)
             .single();
 
+            console.log('🔍 User data fetched:', user); // Debug log
+
         if (error || !user) {
             return res.status(401).json({ success: false, message: 'Invalid email or password.' });
         }
