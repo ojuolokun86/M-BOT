@@ -3,6 +3,7 @@ require('dotenv').config();
 const http = require('http');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const supabase = require('../supabaseClient');
 
 const { startNewSession } = require('../users/userSession');
 const { syncMemoryToSupabase, loadAllSessionsFromSupabase } = require('../database/models/supabaseAuthState');
