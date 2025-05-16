@@ -42,7 +42,8 @@ const generateUniqueAuthId = async () => {
 
 router.post('/register', async (req, res) => {
     console.log('📥 Received registration request:', req.body); // Debug log
-    const { email, password, confirmPassword } = req.body;
+   let { email, password, confirmPassword } = req.body;
+    email = email.toLowerCase();
 
     if (!email || !password || !confirmPassword) {
         return res.status(400).json({ success: false, message: 'All fields are required.' });
@@ -82,7 +83,8 @@ router.post('/register', async (req, res) => {
     }
 });
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.toLowerCase();
     console.log('📥 Received login request:', req.body); // Debug log
 
     // Validate input
