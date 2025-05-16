@@ -51,12 +51,6 @@ const startNewSession = async (phoneNumber, io, authId) => {
         return;
     }
 
-     if (intentionalRestarts.has(phoneNumber)) {
-        console.log(`⚠️ Skipping restart for user ${phoneNumber} due to intentional disconnection.`);
-        intentionalRestarts.delete(phoneNumber); // Clear the flag after skipping
-        return;
-    }
-
     try {
        console.log(`🔄 Starting a new session for auth_id: ${authId}, phone number: ${phoneNumber}`);
       // Use Baileys' multiAuthState to manage session storage
@@ -222,6 +216,11 @@ const startNewSession = async (phoneNumber, io, authId) => {
                     case DisconnectReason.connectionClosed:
                     case DisconnectReason.connectionLost:
                     case DisconnectReason.timedOut:
+                        if (intentionalRestarts.has(sessionId)) {
+                            console.log(`⚠️ Skipping auto-reconnect for user ${sessionId} due to intentional disconnection.`);
+                            intentionalRestarts.delete(sessionId); // Clear the flag after skipping
+                            break; // Do NOT reconnect
+                        }
                         console.log(`🔁 Attempting to reconnect session ${sessionId} in 2 seconds...`);
                         setTimeout(() => startNewSession(sessionId, io, authId), 2000);
                         break;
