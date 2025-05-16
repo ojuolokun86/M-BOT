@@ -325,10 +325,27 @@ router.post('/generate-token', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User with this Auth ID does not exist.' });
         }
 
+        // Check for existing token and get its expiration date
+        const { data: existingToken } = await supabase
+            .from('subscription_tokens')
+            .select('expiration_date')
+            .eq('user_auth_id', authId)
+            .single();
+
+        let baseDate = new Date();
+        if (existingToken && new Date(existingToken.expiration_date) > baseDate) {
+            baseDate = new Date(existingToken.expiration_date);
+        }
+
+        let months = 1;
+        if (subscriptionLevel === 'gold') months = 2;
+        if (subscriptionLevel === 'premium') months = 3;
+
+        const expirationDate = new Date(baseDate);
+        expirationDate.setMonth(expirationDate.getMonth() + months);
+
         // Generate a unique token ID
         const tokenId = crypto.randomBytes(16).toString('hex');
-        const expirationDate = new Date();
-        expirationDate.setMonth(expirationDate.getMonth() + 1); // Token expires in 1 month
 
         // Insert or update the token in the database
         const { error: tokenError } = await supabase
@@ -354,14 +371,13 @@ router.post('/generate-token', async (req, res) => {
             throw new Error(updateError.message);
         }
 
-       // Send the token to the user's notifications
+        // Send the token to the user's notifications
         await addNotification(
             `Your new subscription token: ${tokenId}. Expires on ${expirationDate.toISOString()}`,
             authId,
             'Admin'
         );
         console.log(`🔔 Notification sent to user ${authId} about new token.`);
-
 
         res.status(200).json({ success: true, message: 'Token generated successfully.', tokenId, expirationDate: expirationDate.toISOString() });
     } catch (error) {

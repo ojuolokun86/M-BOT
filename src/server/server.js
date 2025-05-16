@@ -36,14 +36,38 @@ const createServer = () => {
       return res.status(400).json({ error: 'Phone number and auth_id are required.' });
     }
 
-    try {
-      await startNewSession(phoneNumber, io, authId);
-      return res.status(200).json({ message: 'Session started. Please scan the QR code.' });
-    } catch (error) {
-      console.error('❌ Error starting session:', error);
-      return res.status(500).json({ error: 'Failed to start session.' });
+    // Fetch subscription info
+    const { data: token, error } = await supabase
+        .from('subscription_tokens')
+        .select('subscription_level, expiration_date')
+        .eq('user_auth_id', authId)
+        .single();
+
+    if (error || !token) {
+        return res.status(401).json({ error: 'Invalid or expired token.' });
     }
-  });
+
+    // Count current bots
+    const { data: bots } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('auth_id', authId);
+
+    const botCount = bots ? bots.length : 0;
+
+    // Set limits
+    let maxBots = 1, months = 1;
+    if (token.subscription_level === 'gold') { maxBots = 3; months = 2; }
+    if (token.subscription_level === 'premium') { maxBots = 5; months = 3; }
+
+    if (botCount >= maxBots) {
+        return res.status(403).json({ error: `Your subscription (${token.subscription_level}) allows only ${maxBots} bot(s).` });
+    }
+
+    // Continue with registration...
+    await startNewSession(phoneNumber, io, authId);
+    return res.status(200).json({ message: 'Session started. Please scan the QR code.' });
+});
 
   // Delete all users
   app.delete('/api/delete-all-users', async (req, res) => {

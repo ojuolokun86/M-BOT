@@ -136,37 +136,3 @@ console.log(`❌ Ignoring command from ${realSender} in group ${remoteJid} (unsu
 return;
 }
 
-// ✅ User registered successfully with uuid_auth_id: 5fbff99f-25bd-4ae1-be31-957acd720a0e
-
-// the auth id i want it as four or six digit not this long auth id
-
-//  Saving user to user_auth table...
-// ✅ User registered successfully with uuid_auth_id: 5fbff99f-25bd-4ae1-be31-957acd720a0e
-// 📥 Received request to fetch bot info for authId: undefined
-// 🔍 Checking if user exists in user_auth table...
-// 📥 Received request for analytics with authId: undefined
-// ⚠️ No analytics data found for authId: undefined
-// 📥 Received request for activity log with authId: undefined
-// ⚠️ No activity log found for authId: undefined
-// 🔗 New WebSocket connection: HGMLZtE6yOO3I6ZwAAAD
-// 🔗 A client connected to WebSocket.
-// 📥 Received authId: undefined for socket: HGMLZtE6yOO3I6ZwAAAD
-// ❌ Error fetching user from user_auth table: invalid input syntax for type uuid: "undefined"
-// ❌ Error fetching user email from Supabase: invalid input syntax for type uuid: "undefined"
-// ❌ Error in getUserSummary: Failed to fetch user email.
-// ❌ Error fetching user summary: Failed to fetch user email.
-// ❌ WebSocket disconnected: HGMLZtE6yOO3I6ZwAAAD
-// ❌ A client disconnected from WebSocket.
-// 📥 Received request to fetch bot info for authId: undefined
-// 🔍 Checking if user exists in user_auth table...
-// 📥 Received request for analytics with authId: undefined
-// ⚠️ No analytics data found for authId: undefined
-// 📥 Received request for activity log with authId: undefined
-// ⚠️ No activity log found for authId: undefined
-// 🔗 New WebSocket connection: 3VPaBvoIAbFEI-DUAAAF
-// 🔗 A client connected to WebSocket.
-// 📥 Received authId: undefined for socket: 3VPaBvoIAbFEI-DUAAAF
-// ❌ Error fetching user from user_auth table: invalid input syntax for type uuid: "undefined"
-// ❌ Error fetching user email from Supabase: invalid input syntax for type uuid: "undefined"
-// ❌ Error in getUserSummary: Failed to fetch user email.
-// ❌ Error fetching user summary: Failed to fetch user email.
