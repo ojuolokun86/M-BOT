@@ -361,6 +361,7 @@ router.post('/generate-token', async (req, res) => {
             months = 0;
             days = 7; // 1 week
         }
+        if (subscriptionLevel === 'basic') months = 1;
 
         const expirationDate = new Date(baseDate);
         if (months > 0) expirationDate.setMonth(expirationDate.getMonth() + months);
