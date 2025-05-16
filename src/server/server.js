@@ -89,10 +89,22 @@ const createServer = () => {
 // Background tasks
 loadAllSessionsFromSupabase();
 setInterval(() => syncMemoryToSupabase(), 6 * 60 * 60 * 1000);
-process.on('SIGINT', async () => {
-  console.log('🔄 Syncing memory to Supabase before shutdown...');
-  await syncMemoryToSupabase();
-  process.exit();
-});
+
+// Graceful shutdown for all signals
+const gracefulShutdown = async (signal) => {
+  try {
+    console.log(`\n🔄 [${signal}] Syncing memory to Supabase before shutdown...`);
+    await syncMemoryToSupabase();
+    console.log('✅ Memory synced to Supabase. Exiting.');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Error syncing memory to Supabase:', err);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('beforeExit', () => gracefulShutdown('beforeExit'));
 
 module.exports = { createServer };

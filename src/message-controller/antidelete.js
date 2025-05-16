@@ -4,68 +4,35 @@ const { deleteFileFromSupabase } = require('../utils/supabaseStorage'); // Impor
 const DOCUMENTS_BUCKET = 'documents'; // Replace with your Supabase bucket name
 const { deletedMessagesByBot } = require('../utils/globalStore');
 const supabase = require('../supabaseClient'); // Import the Supabase client
-
+const { saveAntideleteMessage, getAntideleteMessage, deleteAntideleteMessage } = require('../utils/globalStore'); // Import the antidelete functions
+const { getBotInstance } = require('../utils/getBotInstance'); // Import the bot instance ID
 /**
- * Save a text message to the database if antidelete is enabled.
- * @param {string} chatId - The group or chat ID.
- * @param {string} messageId - The unique message ID.
- * @param {string} messageContent - The content of the text message.
- * @param {string} botInstanceId - The bot instance ID.
- * @param {number} timestamp - The timestamp of the message.
+ * Save a message to memory for antidelete if enabled in Supabase.
+ * Call this from msgHandler.js for every incoming text message.
  */
-const saveTextMessageToDatabase = async (chatId, messageId, messageContent, botInstanceId, timestamp) => {
-    const isGroup = chatId.endsWith('@g.us'); // Check if the chat is a group
-    const antideleteKey = isGroup ? chatId : 'dm'; // Use 'dm' for direct messages
+const handleAntideleteSave = async (remoteJid, userId, messageType, messageId, messageContent, isGroup, isFromMe) => {
+    if (!(messageType === 'conversation' || messageType === 'extendedTextMessage')) return;
 
-    // Fetch antidelete settings
-    const { data: antideleteSetting, error: fetchError } = await supabase
+    console.log(`🔍 Msg from me: ${isFromMe}`);
+    if (isFromMe) return;
+    
+
+    const antideleteKey = isGroup ? remoteJid : 'dm';
+    const { data: antideleteSetting, error } = await supabase
         .from('antidelete_settings')
         .select('is_enabled, is_global')
         .eq('group_id', antideleteKey)
-        .eq('bot_instance_id', botInstanceId)
-        .single();
+        .eq('bot_instance_id', userId)
+        .maybeSingle();
 
-    if (fetchError || (!antideleteSetting?.is_enabled && !(antideleteSetting?.is_global && !isGroup))) {
-        console.log(`❌ Antidelete is disabled for chat ${chatId} and bot instance ${botInstanceId}. Skipping save.`);
+    if (error) {
+        console.error('❌ Error fetching antidelete setting:', error);
         return;
     }
 
-    let formattedTimestamp;
-    try {
-        formattedTimestamp = new Date(timestamp).toISOString();
-    } catch (error) {
-        console.error(`❌ Failed to format timestamp for message ${messageId}:`, error);
-        return;
-    }
-
-    console.log(`🔄 Attempting to save text message to database:
-        - Chat ID: ${chatId}
-        - Message ID: ${messageId}
-        - Message Content: ${messageContent}
-        - Bot Instance ID: ${botInstanceId}
-        - Timestamp: ${formattedTimestamp}
-    `);
-
-    try {
-        const { error } = await supabase
-            .from('text_messages')
-            .upsert(
-                {
-                    chat_id: chatId,
-                    message_id: messageId,
-                    message_content: messageContent,
-                    bot_instance_id: botInstanceId,
-                    timestamp: formattedTimestamp,
-                },
-                { onConflict: ['chat_id', 'message_id', 'bot_instance_id'] }
-            );
-
-        if (error) {
-            console.error(`❌ Error saving text message to database for message ${messageId}:`, error);
-            return;
-        }
-    } catch (error) {
-        console.error(`❌ Error saving text message to database for message ${messageId}:`, error);
+    if (antideleteSetting?.is_enabled || (antideleteSetting?.is_global && !isGroup)) {
+        saveAntideleteMessage(remoteJid, messageId, messageContent);
+        console.log(`🔍 Antidelete message saved for chat ${remoteJid}: ${messageContent}`);
     }
 };
 
@@ -80,39 +47,38 @@ const handleAntidelete = async (sock, message, botInstanceId) => {
     const isGroup = remoteJid.endsWith('@g.us'); // Check if the chat is a group
     const deletedMessageId = message.message?.protocolMessage?.key?.id; // ID of the deleted message
     const protocolMessageType = message.message?.protocolMessage?.type;
+    const botLid = sock.user?.lid ? sock.user.lid.split(':')[0].split('@')[0] : null;
+    const botId = sock.user?.id ? sock.user.id.split(':')[0].split('@')[0] : null;
+    const realBotInstanceId = botInstanceId && botLid && botId; // Use the provided bot instance ID or the bot's LID
 
     if (protocolMessageType !== 0) {
         console.log(`ℹ️ Message is not a deleted message. Ignoring.`);
         return;
     }
 
-    console.log(`🗑️ Detected deleted message in chat: ${remoteJid}`);
-    console.log(`🔍 Deleted Message ID: ${deletedMessageId}`);
+    // Check if the message was deleted by the same bot instance
+    if (
+    (botLid && deletedMessagesByBot[botLid] && deletedMessagesByBot[botLid].has(deletedMessageId)) ||
+    (botId && deletedMessagesByBot[botId] && deletedMessagesByBot[botId].has(deletedMessageId))
+) {
+    console.log(`⚠️ Ignoring message ${deletedMessageId} deleted by bot instance (id: ${botId}, lid: ${botLid}).`);
+    return;
+}
 
-     
-     // Check if the message was deleted by the same bot instance
-     if (deletedMessagesByBot[botInstanceId] && deletedMessagesByBot[botInstanceId].has(deletedMessageId)) {
-         console.log(`⚠️ Ignoring message ${deletedMessageId} deleted by bot instance ${botInstanceId}.`);
-         return; // Skip restoring the message
-     }
+    const botLidJid = botLid ? `${botLid}@lid` : null;
+        const botIdJid = botId ? `${botId}@s.whatsapp.net` : null;
 
-    // Determine who deleted the message
-    let deletedBy;
-    if (isGroup) {
-        deletedBy = message.key.participant || remoteJid; // In groups, use the participant field
-    } else {
-        // In DMs, check if the message was deleted by the bot or the user
-        deletedBy = message.key.fromMe ? `${botInstanceId}@s.whatsapp.net` : remoteJid;
-    }
+        let deletedBy;
+        if (isGroup) {
+            deletedBy = message.key.participant || remoteJid;
+        } else {
+            deletedBy = message.key.fromMe ? (botLidJid || botIdJid) : remoteJid;
+        }
 
-    console.log(`🔍 Deleted By: ${deletedBy}`);
-
-    // Check if the message was deleted by the bot instance itself
-    const botInstanceJid = `${botInstanceId}@s.whatsapp.net`;
-    if (deletedBy === botInstanceJid) {
-        console.log(`⚠️ Message deleted by the bot instance (${botInstanceJid}). Skipping restore.`);
-        return;
-    }
+        if (deletedBy === botLidJid || deletedBy === botIdJid) {
+            console.log(`⚠️ Message deleted by the bot instance (${deletedBy}). Skipping restore.`);
+            return;
+        }
     // Fetch antidelete settings
     const antideleteKey = isGroup ? remoteJid : 'dm'; // Use 'dm' for direct messages
     const { data: antideleteSetting, error: fetchError } = await supabase
@@ -184,56 +150,19 @@ const handleAntidelete = async (sock, message, botInstanceId) => {
         console.log(`✅ Media file removed from memory for message ID: ${deletedMessageId}`);
    return;
 }
-    // Retrieve the deleted message from the database
-    console.log(`🔍 Attempting to retrieve deleted message from database for message ID: ${deletedMessageId}`);
-    const { data: deletedMessage, error } = await supabase
-        .from('text_messages')
-        .select('message_content, timestamp')
-        .eq('chat_id', remoteJid)
-        .eq('message_id', deletedMessageId)
-        .eq('bot_instance_id', botInstanceId)
-        .single();
-
-    if (error || !deletedMessage) {
-        console.log(`❌ Deleted message not found in database for message ID: ${deletedMessageId}`);
-        console.error(`🔍 Supabase Error:`, error);
-        return;
-    }
-
-    console.log(`✅ Deleted message retrieved from database for message ID: ${deletedMessageId}`);
-
-    // Format the deletion time
-    const deletionTime = new Date().toLocaleString(); // Current time when the message was deleted
-    const deletedByUser = deletedBy.split('@')[0]; // Extract the user ID
-
-    // Restore the deleted text message
-    try {
-        await sock.sendMessage(remoteJid, {
-            text: `♻️ Restored deleted message:\n\n*Message Content:* ${deletedMessage.message_content}\n\n*Deleted By:* @${deletedByUser}\n*Deleted At:* ${deletionTime}`,
-            mentions: [deletedBy],
-        });
-        console.log(`✅ Restored deleted message for message ID: ${deletedMessageId}`);
-
-        
-        // Delete the restored message from the database
-        const { error: deleteError } = await supabase
-            .from('text_messages')
-            .delete()
-            .eq('chat_id', remoteJid)
-            .eq('message_id', deletedMessageId)
-            .eq('bot_instance_id', botInstanceId);
-
-        if (deleteError) {
-            console.error(`❌ Failed to delete restored message from database for message ID: ${deletedMessageId}`, deleteError);
-        } else {
-            console.log(`✅ Restored message deleted from database for message ID: ${deletedMessageId}`);
-        }
-
-
-    } catch (error) {
-        console.error(`❌ Failed to restore deleted message for message ID: ${deletedMessageId}`, error);
-    }
-};
+const msg = getAntideleteMessage(remoteJid, deletedMessageId);
+if (msg) {
+    const deletionTime = new Date().toLocaleString();
+    const deletedByUser = deletedBy.split('@')[0];
+    await sock.sendMessage(remoteJid, {
+        text: `♻️ Restored deleted message:\n\n*Message Content:* ${msg.content}\n\n*Deleted By:* @${deletedByUser}\n*Deleted At:* ${deletionTime}`,
+        mentions: [deletedBy],
+    });
+    deleteAntideleteMessage(remoteJid, deletedMessageId);
+    console.log(`✅ Restored and removed message from memory for message ID: ${deletedMessageId}`);
+} else {
+    console.log(`❌ Deleted message not found in memory for message ID: ${deletedMessageId}`);
+}};
 
 /**
  * Enable or disable antidelete globally for DMs.
@@ -286,37 +215,6 @@ const setChatAntidelete = async (chatId, botInstanceId, isEnabled) => {
     }
 };
 
-/**
- * Delete messages older than 20 minutes from the database.
- */
-const cleanUpOldMessages = async () => {
-    try {
-        const twentyMinutesAgo = new Date();
-        twentyMinutesAgo.setMinutes(twentyMinutesAgo.getMinutes() - 20); // Subtract 20 minutes from the current time
-
-        console.log(`🔄 Cleaning up messages older than: ${twentyMinutesAgo.toISOString()}`);
-
-        const { error } = await supabase
-            .from('text_messages')
-            .delete()
-            .lt('timestamp', twentyMinutesAgo.toISOString()); // Delete messages older than 20 minutes
-
-        if (error) {
-            console.error('❌ Error cleaning up old messages:', error);
-        } else {
-            console.log('✅ Old messages cleaned up successfully.');
-        }
-    } catch (error) {
-        console.error('❌ Failed to clean up old messages:', error);
-    }
-};
-
-// Schedule cleanup every 20 minutes
-setInterval(cleanUpOldMessages, 20 * 60 * 1000); // Run cleanup every 20 minutes
-
-
-
-
 // Periodically clear the deletedMessagesByBot store to prevent memory overflow
 setInterval(() => {
     for (const botId in deletedMessagesByBot) {
@@ -326,9 +224,9 @@ setInterval(() => {
 }, 60 * 60 * 1000); // Clear every hour
 
 module.exports = {
-    saveTextMessageToDatabase,
     handleAntidelete,
     setGlobalAntideleteForDMs,
     setChatAntidelete,
+    handleAntideleteSave,
 };
 

@@ -292,6 +292,7 @@ router.post('/send-user-notification', async (req, res) => {
     }
 
     try {
+        await addNotification(message, authId, 'Admin')
         const io = require('./socket').getSocketInstance();
         console.log(`📤 Sending notification to authId: ${authId}, message: ${message}`);
         io.to(authId).emit('user-notification', { message }); // Emit to the specific authId
@@ -300,6 +301,21 @@ router.post('/send-user-notification', async (req, res) => {
     } catch (error) {
         console.error('❌ Error sending notification:', error.message);
         res.status(500).json({ success: false, message: 'Failed to send notification.' });
+    }
+});
+
+// Mark complaint as read (delete)
+router.delete('/complaints/:timestamp', async (req, res) => {
+    const { timestamp } = req.params;
+    try {
+        const { error } = await supabase
+            .from('complaints')
+            .delete()
+            .eq('timestamp', timestamp);
+        if (error) throw new Error(error.message);
+        res.status(200).json({ success: true, message: 'Complaint deleted.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to delete complaint.' });
     }
 });
 
@@ -332,17 +348,23 @@ router.post('/generate-token', async (req, res) => {
             .eq('user_auth_id', authId)
             .single();
 
-        let baseDate = new Date();
+         let baseDate = new Date();
         if (existingToken && new Date(existingToken.expiration_date) > baseDate) {
             baseDate = new Date(existingToken.expiration_date);
         }
 
         let months = 1;
+        let days = 0;
         if (subscriptionLevel === 'gold') months = 2;
         if (subscriptionLevel === 'premium') months = 3;
+        if (subscriptionLevel === 'trier') {
+            months = 0;
+            days = 7; // 1 week
+        }
 
         const expirationDate = new Date(baseDate);
-        expirationDate.setMonth(expirationDate.getMonth() + months);
+        if (months > 0) expirationDate.setMonth(expirationDate.getMonth() + months);
+        if (days > 0) expirationDate.setDate(expirationDate.getDate() + days);
 
         // Generate a unique token ID
         const tokenId = crypto.randomBytes(16).toString('hex');
@@ -355,6 +377,7 @@ router.post('/generate-token', async (req, res) => {
                 user_auth_id: authId,
                 subscription_level: subscriptionLevel,
                 expiration_date: expirationDate.toISOString(),
+                bot_limit: subscriptionLevel === 'trier' ? 1 : null // Add bot_limit for trier
             }, { onConflict: ['user_auth_id'] });
 
         if (tokenError) {

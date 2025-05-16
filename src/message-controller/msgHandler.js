@@ -4,9 +4,9 @@ const { getGroupMode } = require('../bot/groupModeManager'); // Import the group
 const { getUserPrefix } = require('../database/userPrefix'); // Import the prefix functions
 const env = require('../utils/loadEnv'); // Import environment variables
 const { handleMediaFile } = require('../utils/mediaFile'); // Correctly import the media file handler
-const { handleUserReply, pendingUsernameRequests } = require('./handleUserReply'); // Import user reply handler
-const { saveTextMessageToDatabase, handleAntidelete, setChatAntidelete  } = require('./antidelete'); // Import antidelete functions
-const { groupMessages } = require('../utils/globalStore'); // Import the global group messages object
+const { handleUserReply, } = require('./handleUserReply'); // Import user reply handler
+const {  handleAntidelete, setChatAntidelete  } = require('./antidelete'); // Import antidelete functions
+const { groupMessages, pendingUsernameRequests } = require('../utils/globalStore'); // Import the global group messages object
 const { handleAntiLink } = require('./antilink'); // Import anti-link handler
 const { normalizeUserId } = require('../utils/normalizeUserId'); // Import the normalize function
 const { handleViewOnceMessage } = require('./viewonce'); // Import view once message handler
@@ -16,6 +16,7 @@ const { addUser } = require('../database/userDatabase'); // Import the user data
 const globalStore = require('../utils/globalStore');
 const { updateUserMetrics } = require('../database/models/metrics'); // Import the user metrics functions
 const { updateLastActive } = require('../database/models/memory'); // Import the user database functions
+const  { handleAntideleteSave } = require('./antidelete'); // Import the antidelete functions
 
 
 
@@ -32,7 +33,11 @@ module.exports = async (sock, message, userId, authId) => {
     const messageType = Object.keys(message.message || {})[0]; // Get the type of the message (e.g., conversation)
     const messageContent = message.message?.conversation || message.message?.extendedTextMessage?.text || ''; // Message content
     const isStatus = remoteJid === 'status@broadcast'; // Check if the message is a status update
-    
+    const botLid = sock.user?.lid ? sock.user.lid.split(':')[0].split('@')[0] : null;
+    const botId = sock.user?.id ? sock.user.id.split(':')[0].split('@')[0] : null;
+    const senderId = sender; // Already normalized (no @)
+    const isFromBotUser = senderId === botLid || senderId === botId;
+        
     const botInstanceId = userId; // Use the bot owner's ID as the instance ID
     
 
@@ -111,7 +116,7 @@ module.exports = async (sock, message, userId, authId) => {
     }
 
     // Check if the user is in the pending username requests or replying to a poll
-if (!isGroup && pendingUsernameRequests.has(realSender)) {
+    if (!isGroup && pendingUsernameRequests.has(realSender)) {
     console.log(`📩 Received a direct message from ${realSender}. Checking for user reply...`);
 
     // Get the correct bot instance for the user
@@ -131,11 +136,11 @@ if (!isGroup && pendingUsernameRequests.has(realSender)) {
     return;
 }
 
-
-    // Save text messages to the database
-    if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
-        await saveTextMessageToDatabase(remoteJid, message.key.id, messageContent, userId, Date.now());
-    }
+if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
+    await handleAntideleteSave(remoteJid, userId, messageType, message.key.id, messageContent, isGroup, isFromMe || isFromBotUser);
+    console.log(`🔍 Message content: "${messageContent}"`);
+}
+   
 
     // Handle deleted messages
     if (messageType === 'protocolMessage' && message.message.protocolMessage.type === 0) {

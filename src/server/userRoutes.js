@@ -256,7 +256,10 @@ router.post('/request-account-deletion', async (req, res) => {
     }
 
     try {
-        // Notify the admin about the account deletion request
+        // Save the deletion request as a complaint for admin visibility
+        await addComplaint(authId, '[Account Deletion Request] User requested account deletion.');
+
+        // Notify the admin via socket (optional, for real-time)
         const io = require('./socket').getSocketInstance();
         io.emit('account-deletion-request', { authId });
 

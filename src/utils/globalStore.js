@@ -13,6 +13,35 @@ const restartQueue = {}; // Queue to store restart requests
 let globalPresenceType = null; // Changed from const to let
 const presenceSettings = {};
 const intentionalRestarts = new Set();
+const antideleteStore = new Map(); // { chatId: { messageId: { content, timestamp } } }
+
+function saveAntideleteMessage(chatId, messageId, content) {
+    if (!antideleteStore.has(chatId)) antideleteStore.set(chatId, {});
+    antideleteStore.get(chatId)[messageId] = { content, timestamp: Date.now() };
+}
+
+function getAntideleteMessage(chatId, messageId) {
+    return antideleteStore.has(chatId) ? antideleteStore.get(chatId)[messageId] : null;
+}
+
+function deleteAntideleteMessage(chatId, messageId) {
+    if (antideleteStore.has(chatId)) delete antideleteStore.get(chatId)[messageId];
+}
+
+// Cleanup messages older than 3 minutes (180000 ms)
+setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, messages] of antideleteStore.entries()) {
+        for (const [msgId, { timestamp }] of Object.entries(messages)) {
+            if (now - timestamp > 3 * 60 * 1000) {
+                delete messages[msgId];
+            }
+        }
+        // Remove chat if empty
+        if (Object.keys(messages).length === 0) antideleteStore.delete(chatId);
+    }
+}, 60 * 1000); // Run every minute
+
 
 
 // Cleanup logic for mediaStore
@@ -45,8 +74,34 @@ const cleanupMediaStore = () => {
     console.log(`🗑️ Cleanup completed. Removed ${removedCount} files from memory.`);
 };
 
-// Schedule cleanup every 30 minutes
-setInterval(cleanupMediaStore, 30 * 60 * 1000); // Run cleanup every 30 minutes
+function saveAntideleteMessage(chatId, messageId, content) {
+    if (!antideleteStore.has(chatId)) antideleteStore.set(chatId, {});
+    antideleteStore.get(chatId)[messageId] = { content, timestamp: Date.now() };
+}
+
+function getAntideleteMessage(chatId, messageId) {
+    return antideleteStore.has(chatId) ? antideleteStore.get(chatId)[messageId] : null;
+}
+
+function deleteAntideleteMessage(chatId, messageId) {
+    if (antideleteStore.has(chatId)) delete antideleteStore.get(chatId)[messageId];
+}
+
+// Cleanup messages older than 5 minutes (300000 ms)
+setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, messages] of antideleteStore.entries()) {
+        for (const [msgId, { timestamp }] of Object.entries(messages)) {
+            if (now - timestamp > 5 * 60 * 1000) {
+                delete messages[msgId];
+            }
+        }
+        if (Object.keys(messages).length === 0) antideleteStore.delete(chatId);
+    }
+}, 60 * 1000);
+
+// Schedule cleanup every 5 minutes
+setInterval(cleanupMediaStore, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
 // Export the objects
 module.exports = {
@@ -63,4 +118,7 @@ module.exports = {
     restartQueue,
     globalPresenceType,
     intentionalRestarts,
+    saveAntideleteMessage,
+    getAntideleteMessage,
+    deleteAntideleteMessage,
 };

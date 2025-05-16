@@ -219,6 +219,13 @@ const handleGroupCommand = async (sock, userId, message, command, args, sender, 
                                     participant: quotedParticipant,
                                 },
                             });
+
+                            // Mark this message as deleted by the bot so antidelete won't restore it
+                            const { deletedMessagesByBot } = require('../utils/globalStore');
+                            if (!deletedMessagesByBot[userId]) {
+                                deletedMessagesByBot[userId] = new Set();
+                            }
+                            deletedMessagesByBot[userId].add(quotedMessageId);
                     
                             console.log('✅ Message deleted successfully.');
                         } catch (error) {

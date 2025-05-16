@@ -97,8 +97,8 @@ const getUser = async (userId, lid, id, authId) => {
 
         const { data, error } = await query.single();
 
-        if (error) {
-            console.error(`❌ Error fetching user ${userId}:`, error);
+       if (error && error.code === 'PGRST116') {
+            console.log(`⚠️ User ${userId} not found in the database.`);
             return null;
         }
 
@@ -388,52 +388,66 @@ const updateUserStatusSettings = async (userId, settings) => {
     console.log(`✅ Status settings for user ${userId} updated to:`, settings);
 };
 
+function getPossibleUserKeys(phoneNumber) {
+    const normalized = String(phoneNumber).replace(/\D/g, '');
+    return [
+        normalized,
+        normalized + '@s.whatsapp.net',
+        normalized + '@lid',
+        String(phoneNumber),
+    ];
+}
 
 
 const deleteUserData = async (phoneNumber) => {
     try {
         console.log(`🗑️ Deleting all data for user: ${phoneNumber}`);
 
-       // 1. Stop and remove the bot instance
-        if (botInstances[phoneNumber]) {
-            console.log(`🔄 Stopping bot instance for user: ${phoneNumber}`);
-            try {
-                const botInstance = botInstances[phoneNumber];
-                if (botInstance.sock && botInstance.sock.ws) {
-                    botInstance.disconnectReason = 'intentional'; // Mark as intentional disconnection
-                    await botInstance.sock.ws.close(); // Close the WebSocket connection
-                    console.log(`✅ Bot instance for user ${phoneNumber} stopped successfully.`);
-                } else {
-                    console.warn(`⚠️ Bot instance for user ${phoneNumber} does not have a valid WebSocket connection.`);
+        // Get all possible keys for this user
+        const keys = getPossibleUserKeys(phoneNumber);
+
+        // 1. Stop and remove the bot instance for all possible keys
+        for (const key of keys) {
+            if (botInstances[key]) {
+                console.log(`🔄 Stopping bot instance for user: ${key}`);
+                try {
+                    const botInstance = botInstances[key];
+                    if (botInstance.sock && botInstance.sock.ws) {
+                        botInstance.disconnectReason = 'intentional';
+                        await botInstance.sock.ws.close();
+                        console.log(`✅ Bot instance for user ${key} stopped successfully.`);
+                    } else {
+                        console.warn(`⚠️ Bot instance for user ${key} does not have a valid WebSocket connection.`);
+                    }
+                    delete botInstances[key];
+                } catch (error) {
+                    console.error(`❌ Failed to stop bot instance for user ${key}:`, error.message);
                 }
-                delete botInstances[phoneNumber]; // Remove the bot instance from memory
-            } catch (error) {
-                console.error(`❌ Failed to stop bot instance for user ${phoneNumber}:`, error.message);
+            } else {
+                console.log(`⚠️ No active bot instance found for user: ${key}`);
             }
-        } else {
-            console.log(`⚠️ No active bot instance found for user: ${phoneNumber}`);
+
+            // 2. Delete the user's session from memory for all keys
+            deleteSessionFromMemory(key);
+            console.log(`✅ Deleted session from memory for user: ${key}`);
+
+            // 3. Delete metrics for the user for all keys
+            deleteUserMetrics(key);
+            console.log(`✅ Deleted metrics for user: ${key}`);
+
+            // 4. Delete the user's session folder (if applicable)
+            const userSessionPath = path.join(sessionsDir, key);
+            if (fs.existsSync(userSessionPath)) {
+                fs.rmSync(userSessionPath, { recursive: true, force: true });
+                console.log(`✅ Deleted session folder for user: ${key}`);
+            } else {
+                console.log(`⚠️ Session folder for user ${key} does not exist.`);
+            }
         }
 
-        // 2. Delete the user's session from memory
-        deleteSessionFromMemory(phoneNumber);
-        console.log(`✅ Deleted session from memory for user: ${phoneNumber}`);
-
-        // 3. Delete the user's session from Supabase
+        // 5. Delete the user's session from Supabase (only needs to be done once)
         await deleteSessionFromSupabase(phoneNumber);
         console.log(`✅ Deleted session from Supabase for user: ${phoneNumber}`);
-
-        // 4. Delete metrics for the user
-        deleteUserMetrics(phoneNumber);
-        console.log(`✅ Deleted metrics for user: ${phoneNumber}`);
-
-        // 5. Delete the user's session folder (if applicable)
-        const userSessionPath = path.join(sessionsDir, phoneNumber);
-        if (fs.existsSync(userSessionPath)) {
-            fs.rmSync(userSessionPath, { recursive: true, force: true });
-            console.log(`✅ Deleted session folder for user: ${phoneNumber}`);
-        } else {
-            console.log(`⚠️ Session folder for user ${phoneNumber} does not exist.`);
-        }
 
         // 6. Delete the user's data from the `users` table in Supabase
         const { error: userError } = await supabase

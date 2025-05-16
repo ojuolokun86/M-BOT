@@ -12,6 +12,7 @@ const { handleStatusCommand } = require('./statusView'); // Import the status co
 
 const handleGeneralCommand = async (sock, message, command, args, userId, remoteJid, botInstance, realSender, botOwnerIds, normalizedUserId, botLid, authId) => {
     try {
+        const isGroup = remoteJid.endsWith('@g.us');
                    // Restrict all commands to the bot owner
             if (realSender !== normalizedUserId && realSender !== botLid) {
                 await sendToChat(botInstance, remoteJid, {
@@ -228,7 +229,7 @@ case 'ping':
                                 await sendToChat(botInstance, remoteJid, {
                                     message: `✅ Global antidelete for DMs has been ${isEnabled ? 'enabled' : 'disabled'}.`,
                                 });
-                                console.log(`✅ Global antidelete for DMs set to ${isEnabled ? 'enabled' : 'disabled'} by ${sender}.`);
+                                console.log(`✅ Global antidelete for DMs set to ${isEnabled ? 'enabled' : 'disabled'} by ${realSender}.`);
                             } catch (error) {
                                 console.error(`❌ Failed to update global antidelete for DMs:`, error);
                                 await sendToChat(botInstance, remoteJid, {
@@ -243,7 +244,7 @@ case 'ping':
                                 await sendToChat(botInstance, remoteJid, {
                                     message: `✅ Antidelete has been ${isEnabled ? 'enabled' : 'disabled'} for this chat.`,
                                 });
-                                console.log(`✅ Antidelete for chat ${remoteJid} set to ${isEnabled ? 'enabled' : 'disabled'} by ${sender}.`);
+                                console.log(`✅ Antidelete for chat ${remoteJid} set to ${isEnabled ? 'enabled' : 'disabled'} by ${realSender}.`);
                             } catch (error) {
                                 console.error(`❌ Failed to update antidelete for chat ${remoteJid}:`, error);
                                 await sendToChat(botInstance, remoteJid, {
