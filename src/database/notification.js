@@ -24,18 +24,27 @@ const addNotification = async (message, targetAuthId = null, sender = 'Admin') =
  * @returns {Array} - An array of notifications.
  */
 const getNotifications = async (authId = null) => {
-    const { data, error } = await supabase
+    // Fetch all notifications (global and user-specific)
+    const { data: notifications, error } = await supabase
         .from('notifications')
         .select('*')
         .order('timestamp', { ascending: false })
-        .or(`target_auth_id.is.null,target_auth_id.eq.${authId}`); // Fetch global or user-specific notifications
+        .or(`target_auth_id.is.null,target_auth_id.eq.${authId}`);
 
     if (error) {
         console.error('❌ Error fetching notifications from database:', error.message);
         throw new Error('Failed to fetch notifications.');
     }
 
-    return data;
+    // Fetch read notifications for this user
+    const { data: reads } = await supabase
+        .from('notification_reads')
+        .select('notification_id')
+        .eq('auth_id', authId);
+
+    const readIds = new Set((reads || []).map(r => r.notification_id));
+    // Filter out notifications the user has read
+    return notifications.filter(n => !readIds.has(n.id));
 };
 
 module.exports = { addNotification, getNotifications };

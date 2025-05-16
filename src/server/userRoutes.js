@@ -357,5 +357,28 @@ router.post('/notifications', async (req, res) => {
     }
 });
 
+router.post('/notifications/:notificationId/mark-read', async (req, res) => {
+    const { notificationId } = req.params;
+    const { authId } = req.body;
+
+    if (!notificationId || !authId) {
+        return res.status(400).json({ success: false, message: 'Notification ID and Auth ID are required.' });
+    }
+
+    try {
+        // Insert into notification_reads
+        const { error } = await supabase
+            .from('notification_reads')
+            .insert([{ notification_id: notificationId, auth_id: authId }]);
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        res.status(200).json({ success: true, message: 'Notification marked as read.' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to mark notification as read.' });
+    }
+});
 
 module.exports = { router };

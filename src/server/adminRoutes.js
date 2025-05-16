@@ -453,6 +453,16 @@ const deleteExpiredBots = async () => {
 
 // Endpoint to fetch all bots/users with phoneNumber and authI
 
+
+const deleteOldNotifications = async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase
+        .from('notifications')
+        .delete()
+        .lt('timestamp', threeDaysAgo);
+};
+// Run daily
+setInterval(deleteOldNotifications, 24 * 60 * 60 * 1000);
 // Schedule the task to run daily
 setInterval(deleteExpiredBots, 24 * 60 * 60 * 1000); // Every 24 hours
 
