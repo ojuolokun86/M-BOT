@@ -155,10 +155,10 @@ if (messageType === 'conversation' || messageType === 'extendedTextMessage') {
     const userPrefix = await getUserPrefix(userId);
     console.log(`🔍 Current prefix for user ${userId}: "${userPrefix}"`);
 
-     if (isGroup && messageContent.startsWith('.')) {
+     if (isGroup && messageContent.startsWith(`${userPrefix}`)) {
         console.log(`✅ Processing group command: ${messageContent}`);
         await handleCommand(sock, message, userId, authId, messageContent); // Pass messageContent to cmdHandler.js
-    } else if (!isGroup && messageContent.startsWith('.')) {
+    } else if (!isGroup && messageContent.startsWith(`${userPrefix}`)) {
         console.log(`✅ Processing DM command: ${messageContent}`);
         await handleCommand(sock, message, userId, authId, messageContent); // Pass messageContent to cmdHandler.js
     }
