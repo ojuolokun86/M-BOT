@@ -198,7 +198,7 @@ router.get('/users-info', async (req, res) => {
     try {
         const { data: users, error } = await supabase
             .from('user_auth') // Replace 'users' with your actual table name
-            .select('email, auth_id');
+            .select('email, auth_id, subscription_status');
 
         if (error) {
             console.error('❌ Error fetching users:', error.message);
