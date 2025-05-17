@@ -34,27 +34,41 @@ const commandEmojis = {
     unmute: '🔓',
     kickall: '🚪',
     announce: '📢',
-    group: '🏡',
-    group: '🔄',
+    'announce stop': '🛑',
+    'group link': '🔗',
+    'group revoke': '🔄',
+    leave: '🚪',
 
     // Utility Commands
     delete: '🗑️',
-    view: '👁️', 
-    status: '👀',
-    statusoff: '🚫',
+    view: '👁️',
+    'status on': '👀',
+    'status off': '🚫',
     setname: '✏️',
-    setprofilepic: '🖼️',
+    setpic: '🖼️',
     setstatus: '✏️',
-    presence: '⏮️',
+    presence: '🔄',
+    'presence dynamic': '🔄',
+    'seen on': '👁️',
+    'seen off': '👁️',
+    'antidelete chaton': '🛡️',
+    'antidelete chatoff': '🛡️',
 
     // Protection Commands
     antilink: '🔗',
-    
+    'antilink on': '🔗',
+    'antilink off': '🔗',
+    'antilink warncount': '🔢',
+    'antilink bypassadmin': '🛡️',
+    'antilink dbadmin': '🛡️',
+    'antilink bypass': '🛡️',
+    'antilink db': '🛡️',
+    'antilink list': '📋',
 
     // Community & Group Commands
-    create: '👥',
-    create: '🏢',
-    destroy: '❌',
+    'create group': '👥',
+    'create NG': '🏢',
+    'destroy group': '❌',
     admin: '📢',
 };
 
