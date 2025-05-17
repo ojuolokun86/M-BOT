@@ -18,7 +18,7 @@ const { initializeSocket, getCorsOptions } = require('./socket');
 
 const createServer = () => {
   const app = express();
-  const server = http.createServer(app);
+  server = http.createServer(app);
   const io = initializeSocket(server);
   global.io = io;
   const corsOptions = getCorsOptions();
@@ -96,7 +96,18 @@ setInterval(() => syncMemoryToSupabase(), 6 * 60 * 60 * 1000);
 const gracefulShutdown = async (signal) => {
   try {
     console.log(`\n🔄 [${signal}] Syncing memory to Supabase before shutdown...`);
+    if (server) {
+      server.close(() => {
+        console.log('🛑 HTTP server closed.');
+      });
+    }
+    const timeout = setTimeout(() => {
+      console.error('❌ Shutdown timed out. Forcing exit.');
+      process.exit(1);
+    }, 3000); // 3 seconds, adjust as needed
+
     await syncMemoryToSupabase();
+    clearTimeout(timeout);
     console.log('✅ Memory synced to Supabase. Exiting.');
     process.exit(0);
   } catch (err) {
