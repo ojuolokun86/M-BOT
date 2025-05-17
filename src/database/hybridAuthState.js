@@ -30,9 +30,27 @@ async function useHybridAuthState(phoneNumber, authId) {
         // Validate credentials
         if (!sessionData.creds || !sessionData.creds.me || !sessionData.creds.me.id) {
             console.warn(`⚠️ Invalid credentials for ${phoneNumber}. Reinitializing session.`);
-            sessionData = { creds: initAuthCreds(), keys: {} };
-            memory.saveSessionToMemory(phoneNumber, sessionData, authId);
-        }
+        // 1. Send notification to the affected user (if you have a socket or notification system)
+            // Example: emit a socket event (customize as needed)
+            if (global.io && sessionData.authId) {
+                global.io.to(String(sessionData.authId)).emit('bot-error', {
+                    phoneNumber,
+                    status: 'failure',
+                    message: '❌ Your session is invalid or expired. Please re-register your bot.',
+                    needsRescan: true
+                });
+            }
+             // 2. Delete only the session (from memory and Supabase)
+                const { deleteSessionFromMemory } = require('./models/memory');
+                const { deleteSessionFromSupabase } = require('./models/supabaseAuthState');
+                deleteSessionFromMemory(phoneNumber);
+                await deleteSessionFromSupabase(phoneNumber);
+
+                // 3. Do NOT delete the user from the users table
+
+                // 4. Throw an error to prevent further processing
+                throw new Error('Invalid credentials: session deleted, user notified.');
+            }
             const deserializedKeys = {};
            for (const keyType in sessionData.keys) {
                 deserializedKeys[keyType] = {};

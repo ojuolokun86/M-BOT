@@ -11,6 +11,10 @@ const supabase = require('../supabaseClient'); // Import Supabase client
 const { getAllComplaints } = require('../database/complaint'); // Import the complaints function
 const { addNotification } = require('../database/notification'); // Import the notification function
 const { getSocketInstance } = require('./socket'); // Import the socket instance
+const { syncMemoryToSupabase } = require('../database/models/supabaseAuthState'); // Import at the top
+const { botInstances } = require('../utils/globalStore'); // At the top
+
+
 // Admin login route
 router.post('/login', (req, res) => {
     const { email, password } = req.body;
@@ -104,6 +108,33 @@ router.get('/users/memory-usage', (req, res) => {
     }
 });
 
+router.post('/stop-bot/:phoneNumber', async (req, res) => {
+    const { phoneNumber } = req.params;
+    try {
+        if (botInstances[phoneNumber] && botInstances[phoneNumber].sock && botInstances[phoneNumber].sock.ws) {
+            await botInstances[phoneNumber].sock.ws.close();
+            delete botInstances[phoneNumber];
+            res.json({ success: true, message: `Bot for ${phoneNumber} stopped.` });
+        } else {
+            res.status(404).json({ success: false, message: 'Bot instance not found or already stopped.' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to stop bot.' });
+    }
+});
+
+
+router.post('/start-bot/:phoneNumber', async (req, res) => {
+    const { phoneNumber } = req.params;
+    const { authId } = req.body;
+    try {
+        const { restartUserBot } = require('../bot/restartBot');
+        await restartUserBot(phoneNumber, null, authId);
+        res.json({ success: true, message: `Bot for ${phoneNumber} started.` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to start bot.' });
+    }
+});
 
 
 
@@ -474,6 +505,16 @@ const deleteExpiredBots = async () => {
     }
 };
 
+
+router.post('/sync-memory', async (req, res) => {
+    try {
+        await syncMemoryToSupabase();
+        res.status(200).json({ success: true, message: 'Memory synced to Supabase.' });
+    } catch (error) {
+        console.error('❌ Error syncing memory to Supabase:', error.message);
+        res.status(500).json({ success: false, message: 'Failed to sync memory.' });
+    }
+});
 
 // Endpoint to fetch all bots/users with phoneNumber and authI
 

@@ -21,13 +21,31 @@ const restartUserBot = async (userId, remoteJid, authId) => {
         // Mark this user for intentional restart to prevent reconnection during shutdown
         intentionalRestarts.add(userId);
 
-        // Close the user's WebSocket connection
-        console.log(`❌ Closing connection for user: ${userId}`);
+        // Close the user's WebSocket connection and wait for it to close
         if (botInstance && botInstance.sock && botInstance.sock.ws) {
+            console.log(`❌ Closing connection for user: ${userId}`);
             botInstance.disconnectReason = 'intentional';
-            await botInstance.sock.ws.close();
+
+            await new Promise((resolve) => {
+                botInstance.sock.ws.on('close', resolve);
+                botInstance.sock.ws.close();
+            });
+
             delete botInstances[userId];
+        } else {
+            if (botInstance && !botInstance.sock) {
+                console.warn(`⚠️ Bot instance for user ${userId} exists but has no .sock property. Deleting stale instance.`);
+            } else if (botInstance && botInstance.sock && !botInstance.sock.ws) {
+                console.warn(`⚠️ Bot instance for user ${userId} has .sock but no .ws property. Deleting stale instance.`);
+            } else {
+                console.warn(`⚠️ No active WebSocket to close for user: ${userId}`);
+            }
+            if (botInstance) delete botInstances[userId];
         }
+
+        // Wait a short moment to ensure cleanup (optional, but helps)
+        await new Promise(res => setTimeout(res, 500));
+        console.log(`✅ Connection closed for user: ${userId}`);
 
         // Start a new session
         const { startNewSession } = require('../users/userSession');

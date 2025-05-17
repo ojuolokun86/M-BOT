@@ -20,7 +20,7 @@ const createServer = () => {
   const app = express();
   const server = http.createServer(app);
   const io = initializeSocket(server);
-
+  global.io = io;
   const corsOptions = getCorsOptions();
   app.use(cors(corsOptions));
   app.use(bodyParser.json());
@@ -57,9 +57,11 @@ const createServer = () => {
     const botCount = bots ? bots.length : 0;
 
     // Set limits
-    let maxBots = 1, months = 1;
-    if (token.subscription_level === 'gold') { maxBots = 3; months = 2; }
-    if (token.subscription_level === 'premium') { maxBots = 5; months = 3; }
+  let maxBots = 1, months = 1, days = 0;
+  if (token.subscription_level === 'gold') { maxBots = 3; months = 2; }
+  if (token.subscription_level === 'premium') { maxBots = 5; months = 3; }
+  if (token.subscription_level === 'trier') { maxBots = 1; months = 0; days = 7; }
+  if (token.subscription_level === 'basic') { maxBots = 1; months = 1; }
 
     if (botCount >= maxBots) {
         return res.status(403).json({ error: `Your subscription (${token.subscription_level}) allows only ${maxBots} bot(s).` });

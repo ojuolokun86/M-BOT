@@ -51,6 +51,16 @@ const startNewSession = async (phoneNumber, io, authId) => {
         return;
     }
 
+            if (botInstances[phoneNumber]) {
+                console
+            try {
+                if (botInstances[phoneNumber].sock && botInstances[phoneNumber].sock.ws) {
+                    await botInstances[phoneNumber].sock.ws.close();
+                }
+            } catch (e) {}
+            delete botInstances[phoneNumber];
+        }
+
     try {
        console.log(`🔄 Starting a new session for auth_id: ${authId}, phone number: ${phoneNumber}`);
       // Use Baileys' multiAuthState to manage session storage
@@ -64,11 +74,7 @@ const startNewSession = async (phoneNumber, io, authId) => {
     generateHighQualityLinkPreview: true,
     markOnlineOnConnect: true,
     // Automatically re-init sessions when needed
-    getMessage: async (key) => {
-        return {
-            conversation: '❌ session has not completed yet pls resend the command',
-        };
-    }
+    getMessage: async (key) => {}
 });
 
 
@@ -242,6 +248,12 @@ const startNewSession = async (phoneNumber, io, authId) => {
                         break;
 
                    default:
+
+                   if (intentionalRestarts.has(sessionId)) {
+                        console.log(`⚠️ Skipping auto-reconnect for user ${sessionId} due to intentional disconnection.`);
+                        intentionalRestarts.delete(sessionId); // Clear the flag after skipping
+                        break; // Do NOT reconnect
+                    }
                         console.log(`❓ Unknown disconnect reason (${reason}) for ${sessionId}. Retrying in 2 seconds...`);
                         // Notify the frontend to tell the user to register again
                         if (io && authId) {
@@ -252,8 +264,8 @@ const startNewSession = async (phoneNumber, io, authId) => {
                                 needsRescan: true
                             });
                         }
-                        delete botInstances[sessionId];
-                        await deleteUserData(sessionId);
+                       console.log(`🔁 Attempting to reconnect session ${sessionId} in 2 seconds...`);
+                        setTimeout(() => startNewSession(sessionId, io, authId), 2000);
                         break;
                 }
             }
