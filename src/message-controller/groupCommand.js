@@ -1061,20 +1061,20 @@ const handleGroupCommand = async (sock, userId, message, command, args, sender, 
                                                 case 'list':
                                                     console.log(`🔄 Fetching Anti-Link settings for group ${remoteJid}.`);
                                                     const settings = await getAntiLinkSettings(remoteJid, userIdFromDatabase.user_id);
-                                        
-                                                    const bypassUsersList = settings.bypass_users?.map((user) => `- @${user.split('@')[0]}`).join('\n') || 'None';
-                                                    
-                                                    const statusMessage = `
-                                                    *🛡️ Anti-Link Settings*
+                                                    const bypassUsersList = (settings.bypass_users?.length)
+                                                        ? settings.bypass_users.map((user) => `   ◦ @${user.split('@')[0]}`).join('\n')
+                                                        : '   None';
+
+                                                    const statusMessage = 
+                                                    `*🛡️ Anti-Link Settings*
                                                     ━━━━━━━━━━━━━━━━━━━━
                                                     • *Enabled:* ${settings.antilink_enabled ? '✅ Yes' : '❌ No'}
                                                     • *Warning Count:* ${settings.warning_count || 3}
                                                     • *Bypass Admin:* ${settings.bypass_admin ? '✅ Yes' : '❌ No'}
                                                     • *Bypass Users:*
                                                     ${bypassUsersList}
-                                                    ━━━━━━━━━━━━━━━━━━━━
-                                                    `;
-                                        
+                                                    ━━━━━━━━━━━━━━━━━━━━`;
+
                                                     await sendToChat(botInstance, remoteJid, { message: statusMessage });
                                                     break;
                                         
